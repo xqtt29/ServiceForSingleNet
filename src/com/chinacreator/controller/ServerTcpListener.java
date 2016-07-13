@@ -28,6 +28,19 @@ public class ServerTcpListener {
         	Global.lSend = new LanSendService(Global.list);
         	Global.lSend.join();     //加入组播，并创建线程侦听
         	Global.lSend.sendGetUserMsg();    //广播信息，寻找上线主机交换信息
+        	new Thread(new Runnable() {
+				public void run() {
+					while(true){
+						try {
+							Thread.currentThread().sleep(5*60000);
+							Global.list=new ArrayList<Map<String,Object>>();
+				        	Global.lSend.sendGetUserMsg();    //广播信息，寻找上线主机交换信息
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+					}
+				}
+			}).start();;
             final ServerSocket receiveService = new ServerSocket(Integer.parseInt(conf.get(Global.PORT)==null?"8888":conf.get(Global.PORT).toString()));
 			while (true) {
 				try {
