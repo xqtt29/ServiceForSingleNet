@@ -6,12 +6,17 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.RandomAccessFile;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.chinacreator.common.Global;
 import com.chinacreator.service.DataOprService;
+import com.chinacreator.service.LanSendService;
 
 public class OperatorService {
 	//获取配置文件
@@ -61,7 +66,16 @@ public class OperatorService {
                 //客户端发送粘贴板内容
 	            }else if("5".equals(fileType)){
 	            	sendStr(socket);
-	            }
+	            //客户端发起转发请求
+	            }else if("6".equals(fileType)){
+	            	reSendFile(socket);
+	            //查询在线服务端
+	            }else if("7".equals(fileType)){
+                	queryService(socket);
+                //上传文件
+	            }else if("8".equals(fileType)){
+	            	receiveFileMutil(socket);
+                }
             } finally {
                 if (fos != null)
                     fos.close();
@@ -356,5 +370,117 @@ public class OperatorService {
 	            dos.flush();
 	        }
 	    }
+    }
+    
+    public void reSendFile(Socket resSocket){
+    	int length = 0;
+        Socket socket = null;
+        DataOutputStream dos = null;
+        DataInputStream resDis = null;
+        FileInputStream fis = null;
+        try {
+            try {
+            	resDis = new DataInputStream(resSocket.getInputStream());
+            	int ipLen=resDis.readInt();
+            	byte[] ips= new byte[ipLen];
+            	resDis.read(ips);
+            	String ip=new String(ips,Global.CHAR_FORMAT);
+            	int port=resDis.readInt();
+                socket = new Socket();
+                socket.connect(new InetSocketAddress(ip,port),
+                               3 * 1000);
+                dos = new DataOutputStream(socket.getOutputStream());
+                byte[] sendBytes = new byte[102400];
+                while ((length = resDis.read(sendBytes, 0, sendBytes.length)) > 0) {
+                    dos.write(sendBytes, 0, length);
+                    dos.flush();
+                }
+            } finally {
+                if (resDis != null)
+                	resDis.close();
+                if (dos != null)
+                    dos.close();
+                if (fis != null)
+                    fis.close();
+                if (socket != null)
+                    socket.close();
+            }
+        }catch (Exception e) {
+        	e.printStackTrace();
+        }
+    }
+    /**
+	 * @Description
+	 * 客户端查询文件处理类
+	 * 输出socket信息流：前10个字节是文件长度，后面接着文件绝对路径信息流，多个文件依此循环拼接
+	 * @Author qiang.zhu
+	 * @param socket
+	 */
+    public void queryService(Socket socket) {
+        DataOutputStream dos = null;
+        try {
+            try {
+            	dos = new DataOutputStream(socket.getOutputStream());
+            	dos.writeInt(Global.list.size());
+    		    for(Map<String,Object> map : Global.list){
+    		    	String ip=map.get("IP")==null?"":map.get("IP").toString();
+    		    	String hostName=map.get("HOSTNAME")==null?"":map.get("HOSTNAME").toString();
+		            dos.writeInt(ip.getBytes(Global.CHAR_FORMAT).length);
+		            dos.write(ip.getBytes(Global.CHAR_FORMAT));
+		            dos.writeInt(hostName.getBytes(Global.CHAR_FORMAT).length);
+		            dos.write(hostName.getBytes(Global.CHAR_FORMAT));
+    		    }
+	            dos.flush();
+            } finally {
+                if (dos != null)
+                	dos.close();
+                if (socket != null)
+                    socket.close();
+            }
+        } catch (Exception e) {
+        	DataOprService.getInstance().insertLog("queryService:ex:"+e.getStackTrace()[0].toString(),conf.get(Global.MAIN_PATH));
+        }
+    }
+    /**
+	 * @Description
+	 * 客户端上传文件处理类
+	 * 输入socket信息流：前10个字节是上传文件的名称长度，后面接着文件信息流
+	 * @Author qiang.zhu
+	 * @param socket
+	 */
+    public void receiveFileMutil(Socket socket) {
+        DataInputStream dis = null;
+		RandomAccessFile raf = null;
+        try {
+            try {
+                dis = new DataInputStream(socket.getInputStream());
+                long startNum=dis.readLong();
+            	int fileNameLenth=dis.readInt();
+            	byte[] fileNames=new byte[fileNameLenth];
+            	dis.read(fileNames);
+            	String fileName=new String(fileNames,Global.CHAR_FORMAT);
+            	String filePath=conf.get(Global.RECEIVE_PATH)==null?(System.getProperty("user.dir")+File.separator+"收件箱"):conf.get(Global.RECEIVE_PATH);
+                File dir=new File(filePath);
+                if(!dir.exists())
+                	dir.mkdirs();
+                File file=new File(filePath+File.separator+fileName);
+            	raf=new RandomAccessFile(file,"rwd");
+            	raf.seek(startNum);
+            	int length=0;
+            	byte[] bytes = new byte[102400];
+            	while((length=dis.read(bytes,0,bytes.length))>0){
+            		raf.write(bytes, 0, length);
+            	}
+            } finally {
+                if (raf != null)
+                	raf.close();
+                if (dis != null)
+                    dis.close();
+                if (socket != null)
+                    socket.close();
+            }
+        } catch (Exception e) {
+        	DataOprService.getInstance().insertLog("receive:ex:"+e.getStackTrace()[0].toString(),conf.get(Global.MAIN_PATH));
+        }
     }
 }

@@ -2,9 +2,11 @@ package com.chinacreator.controller;
 
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Map;
 import com.chinacreator.common.Global;
 import com.chinacreator.service.DataOprService;
+import com.chinacreator.service.LanSendService;
 
 /**
  * @Description
@@ -22,6 +24,10 @@ public class ServerTcpListener {
 	
     public static void main(String[] args) {
         try {
+        	Global.list=new ArrayList<Map<String,Object>>();
+        	Global.lSend = new LanSendService(Global.list);
+        	Global.lSend.join();     //加入组播，并创建线程侦听
+        	Global.lSend.sendGetUserMsg();    //广播信息，寻找上线主机交换信息
             final ServerSocket receiveService = new ServerSocket(Integer.parseInt(conf.get(Global.PORT)==null?"8888":conf.get(Global.PORT).toString()));
 			while (true) {
 				try {

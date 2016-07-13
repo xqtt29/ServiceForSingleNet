@@ -1,8 +1,10 @@
 package com.chinacreator.common;
 
+import java.util.List;
 import java.util.Map;
 
 import com.chinacreator.service.DataOprService;
+import com.chinacreator.service.LanSendService;
 
 public class Global {
 	private static Map<String,String> conf=DataOprService.getInstance().getProp();
@@ -17,4 +19,7 @@ public class Global {
 	//配置文件中编码格式字段
 	public static final String CHAR_FORMAT=conf.get("charFormat")==null?"GBK":conf.get("charFormat");
 	
+	public static List<Map<String,Object>> list;
+	
+	public static LanSendService lSend;
 }
