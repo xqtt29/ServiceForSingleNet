@@ -4,7 +4,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -108,6 +107,7 @@ public class LanSendService {
 		}
 	}
 	public void sendGetUserMsg() {
+		list.clear();
 		byte[] b=new byte[1024];
         DatagramPacket packet;  //数据包，相当于集装箱，封装信息
         try{
@@ -132,17 +132,7 @@ public class LanSendService {
 		}
 	}
 	public static void main(String[] args) {
-		LanSendService lSend;
-		List<Map<String,Object>> list=new ArrayList<Map<String,Object>>();
-		try {
-		    lSend=new LanSendService(list);
-		    lSend.join();     //加入组播，并创建线程侦听
-		    lSend.sendGetUserMsg();    //广播信息，寻找上线主机交换信息
-		    Thread.sleep(3000);  //程序睡眠3秒
-		    lSend.offLine(); //广播下线通知
-		} catch (Exception e) {
-			System.out.println("*****获取本地用户信息出错*****");
-		}
+		
 	}
 	private boolean checkIpExists(String ip){
 		boolean flag=false;

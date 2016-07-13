@@ -24,17 +24,15 @@ public class ServerTcpListener {
 	
     public static void main(String[] args) {
         try {
-        	Global.list=new ArrayList<Map<String,Object>>();
+			Global.list=new ArrayList<Map<String,Object>>();
         	Global.lSend = new LanSendService(Global.list);
         	Global.lSend.join();     //加入组播，并创建线程侦听
-        	Global.lSend.sendGetUserMsg();    //广播信息，寻找上线主机交换信息
         	new Thread(new Runnable() {
 				public void run() {
 					while(true){
 						try {
-							Thread.currentThread().sleep(5*60000);
-							Global.list=new ArrayList<Map<String,Object>>();
 				        	Global.lSend.sendGetUserMsg();    //广播信息，寻找上线主机交换信息
+							Thread.currentThread().sleep(5*60000);
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
