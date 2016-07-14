@@ -9,14 +9,14 @@ import java.io.FileOutputStream;
 import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.ArrayList;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.Map;
-
 import com.chinacreator.common.Global;
 import com.chinacreator.service.DataOprService;
-import com.chinacreator.service.LanSendService;
 
 public class OperatorService {
 	//获取配置文件
@@ -47,10 +47,10 @@ public class OperatorService {
         try {
             try {
                 dis = new DataInputStream(socket.getInputStream());
-                DataOprService.getInstance().insertLog("请求客户端:"+socket.getRemoteSocketAddress().toString(),conf.get(Global.MAIN_PATH));
                 byte[] fileTypes=new byte[1];
                 dis.read(fileTypes, 0, 1);
                 String fileType=new String(fileTypes,Global.CHAR_FORMAT);
+                DataOprService.getInstance().insertLog("请求客户端:"+socket.getRemoteSocketAddress().toString()+"  "+fileType,conf.get(Global.MAIN_PATH));
                 //客户端发起传送文件
                 if("1".equals(fileType)){
                 	receiveFile(socket);
@@ -75,6 +75,12 @@ public class OperatorService {
                 //上传文件
 	            }else if("8".equals(fileType)){
 	            	receiveFileMutil(socket);
+	            //上传文件
+	            }else if("9".equals(fileType)){
+	            	queryUnSendFile(socket);
+	            //上传文件
+	            }else if("0".equals(fileType)){
+	            	deleteTempFile(socket);
                 }
             } finally {
                 if (fos != null)
@@ -369,6 +375,9 @@ public class OperatorService {
 	            dos.write(sendBytes, 0, length);
 	            dos.flush();
 	        }
+	        if(fis!=null){
+	        	fis.close();
+	        }
 	    }
     }
     
@@ -454,11 +463,16 @@ public class OperatorService {
         try {
             try {
                 dis = new DataInputStream(socket.getInputStream());
+                long finalStartNum=dis.readLong();
                 long startNum=dis.readLong();
             	int fileNameLenth=dis.readInt();
             	byte[] fileNames=new byte[fileNameLenth];
             	dis.read(fileNames);
             	String fileName=new String(fileNames,Global.CHAR_FORMAT);
+            	Map<String,Object> map=Global.sendingFileInfo.get(fileName);
+            	if(map==null){
+            		map=new Hashtable<String,Object>();
+            	}
             	String filePath=conf.get(Global.RECEIVE_PATH)==null?(System.getProperty("user.dir")+File.separator+"收件箱"):conf.get(Global.RECEIVE_PATH);
                 File dir=new File(filePath);
                 if(!dir.exists())
@@ -468,8 +482,11 @@ public class OperatorService {
             	raf.seek(startNum);
             	int length=0;
             	byte[] bytes = new byte[102400];
+            	long sendedTotal=0;
             	while((length=dis.read(bytes,0,bytes.length))>0){
             		raf.write(bytes, 0, length);
+            		sendedTotal+=length;
+            		map.put(String.valueOf(finalStartNum), sendedTotal);
             	}
             } finally {
                 if (raf != null)
@@ -480,7 +497,72 @@ public class OperatorService {
                     socket.close();
             }
         } catch (Exception e) {
-        	DataOprService.getInstance().insertLog("receive:ex:"+e.getStackTrace()[0].toString(),conf.get(Global.MAIN_PATH));
+        	DataOprService.getInstance().insertLog("receiveFileMutil:ex:"+e.getStackTrace()[0].toString(),conf.get(Global.MAIN_PATH));
+        }
+    }
+    /**
+	 * @Description
+	 * 客户端上传文件处理类
+	 * 输入socket信息流：前10个字节是上传文件的名称长度，后面接着文件信息流
+	 * @Author qiang.zhu
+	 * @param socket
+	 */
+    public void queryUnSendFile(Socket socket) {
+        DataInputStream dis = null;
+        DataOutputStream dos = null;
+        try {
+            try {
+                dis = new DataInputStream(socket.getInputStream());
+                dos = new DataOutputStream(socket.getOutputStream());
+                long startNum=dis.readLong();
+            	int fileNameLenth=dis.readInt();
+            	byte[] fileNames=new byte[fileNameLenth];
+            	dis.read(fileNames);
+            	String fileName=new String(fileNames,Global.CHAR_FORMAT);
+                if(Global.sendingFileInfo.get(fileName)!=null&&Global.sendingFileInfo.get(fileName).get(String.valueOf(startNum))!=null){
+                	dos.writeInt(200);
+                	dos.writeLong(Long.parseLong(Global.sendingFileInfo.get(fileName).get(String.valueOf(startNum)).toString()));
+                }else{
+                	dos.writeInt(-1);
+                }
+                dos.flush();
+            } finally {
+                if (dos != null)
+                	dos.close();
+                if (dis != null)
+                    dis.close();
+                if (socket != null)
+                    socket.close();
+            }
+        } catch (Exception e) {
+        	DataOprService.getInstance().insertLog("queryUnSendFile:ex:"+e.getStackTrace()[0].toString(),conf.get(Global.MAIN_PATH));
+        }
+    }
+    /**
+	 * @Description
+	 * 客户端上传文件处理类
+	 * 输入socket信息流：前10个字节是上传文件的名称长度，后面接着文件信息流
+	 * @Author qiang.zhu
+	 * @param socket
+	 */
+    public void deleteTempFile(Socket socket) {
+        DataInputStream dis = null;
+        try {
+            try {
+                dis = new DataInputStream(socket.getInputStream());
+            	int fileNameLenth=dis.readInt();
+            	byte[] fileNames=new byte[fileNameLenth];
+            	dis.read(fileNames);
+            	String fileName=new String(fileNames,Global.CHAR_FORMAT);
+            	Global.sendingFileInfo.remove(fileName);
+            } finally {
+                if (dis != null)
+                    dis.close();
+                if (socket != null)
+                    socket.close();
+            }
+        } catch (Exception e) {
+        	DataOprService.getInstance().insertLog("deleteTempFile:ex:"+e.getStackTrace()[0].toString(),conf.get(Global.MAIN_PATH));
         }
     }
 }

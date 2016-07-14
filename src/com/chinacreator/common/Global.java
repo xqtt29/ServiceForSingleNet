@@ -1,5 +1,6 @@
 package com.chinacreator.common;
 
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 
@@ -7,6 +8,9 @@ import com.chinacreator.service.DataOprService;
 import com.chinacreator.service.LanSendService;
 
 public class Global {
+	
+	public static Map<String,Hashtable<String,Object>> sendingFileInfo=new Hashtable<String,Hashtable<String,Object>>();
+	
 	private static Map<String,String> conf=DataOprService.getInstance().getProp();
 	//配置文件中监听的端口字段
 	public static final String PORT="port";
