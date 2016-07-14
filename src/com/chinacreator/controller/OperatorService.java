@@ -9,11 +9,8 @@ import java.io.FileOutputStream;
 import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Hashtable;
-import java.util.Iterator;
 import java.util.Map;
 import com.chinacreator.common.Global;
 import com.chinacreator.service.DataOprService;
@@ -469,9 +466,12 @@ public class OperatorService {
             	byte[] fileNames=new byte[fileNameLenth];
             	dis.read(fileNames);
             	String fileName=new String(fileNames,Global.CHAR_FORMAT);
-            	Map<String,Object> map=Global.sendingFileInfo.get(fileName);
-            	if(map==null){
+            	Hashtable<String,Object> map=null;
+            	if(Global.sendingFileInfo.get(fileName)==null){
             		map=new Hashtable<String,Object>();
+            		Global.sendingFileInfo.put(fileName, map);
+            	}else{
+            		map=Global.sendingFileInfo.get(fileName);
             	}
             	String filePath=conf.get(Global.RECEIVE_PATH)==null?(System.getProperty("user.dir")+File.separator+"收件箱"):conf.get(Global.RECEIVE_PATH);
                 File dir=new File(filePath);
